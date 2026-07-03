@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Node.js
+node_modules/
+dist/
+build/
+
+# ESP-IDF
+build/
+sdkconfig.old
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dataset recordings (optional)
+datasets/*.csv
+
+# Models (optional)
+models/*.pt
+models/*.pth
+models/*.onnx
