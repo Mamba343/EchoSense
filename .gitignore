@@ -34,3 +34,6 @@ datasets/*.csv
 models/*.pt
 models/*.pth
 models/*.onnx
+
+datasets/*
+!datasets/.gitkeep
