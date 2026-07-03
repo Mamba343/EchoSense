@@ -37,3 +37,4 @@ models/*.onnx
 
 datasets/*
 !datasets/.gitkeep
+!datasets/README.md
