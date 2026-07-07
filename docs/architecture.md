@@ -1,144 +1,54 @@
-# EchoSense Architecture
+# Architecture
 
-EchoSense is a clean-room, open-source Wi-Fi sensing project inspired by high-level architecture patterns observed in the local RuView repository. The review was limited to architecture, folder organization, communication boundaries, CSI data flow, dashboard transport, and API structure. EchoSense must not copy RuView code, assets, branding, UI design, CSS, diagrams, protocol definitions, API names, model implementation, firmware implementation, or other implementation details.
+EchoSense is an early-stage local Wi-Fi CSI sensing project. The architecture is currently documented but not implemented.
 
-EchoSense v1 targets one ESP32 NodeMCU-32, one laptop running Python, and a Wi-Fi router. The project focuses on Wi-Fi CSI collection, hardware validation, live/replay data flow, dataset recording, live CSI visualization, motion detection, occupancy detection, and a modern Three.js dashboard. Heart rate, respiration, DensePose, human skeleton estimation, identity tracking, and multi-person localization are intentionally out of scope.
+## Current Implementation Status
 
-## Architecture Goals
-
-- Validate the ESP32 NodeMCU-32 CSI path before building detection features.
-- Keep firmware small and focused on CSI capture and UDP transport.
-- Keep the backend as one Python application with clear internal modules.
-- Avoid premature microservices and unnecessary abstractions.
-- Use shared EchoSense protocol definitions instead of duplicated packet/message constants.
-- Make replay mode behave exactly like live mode from the frontend perspective.
-- Use structured logging instead of `print()` for runtime diagnostics.
-- Preserve privacy by processing locally and avoiding cameras, cloud services, and identity features.
-
-## Clean-Room Boundary
-
-EchoSense can learn from design patterns, but implementation must remain independent:
-
-- Define EchoSense-specific packet formats, schemas, names, routes, state names, and UI language.
-- Do not copy external source code, assets, CSS, screenshots, diagrams, protocol constants, API names, model code, branding, or implementation details.
-- Treat RuView as architectural inspiration only.
-- Keep claims limited to what EchoSense validates with its own hardware and datasets.
-
-## Project Structure
-
-```text
-EchoSense/
-  README.md
-  TODO.md
-  docs/
-    architecture.md
-    system-design.md
-    data-flow.md
-    roadmap.md
-  shared/
-    README.md
-    protocol/
-      README.md
-    schemas/
-      README.md
-    constants/
-      README.md
-  firmware/
-    # Future ESP32 NodeMCU-32 firmware
-  backend/
-    simulator/
-      README.md
-    # Future single Python backend application
-  frontend/
-    # Future dashboard
-  datasets/
-    README.md
-    # Future versioned session folders
-  logs/
-    README.md
-    # Future structured runtime logs
-  models/
-    # Future lightweight local models
-```
-
-## Shared Module
-
-The top-level `shared/` directory is the source of truth for cross-layer contracts. Firmware, backend, simulator, replay mode, and frontend should depend on shared definitions instead of duplicating constants.
-
-| Area | Purpose |
+| Area | Status |
 | --- | --- |
-| `shared/protocol/` | UDP packet format, WebSocket message envelope, REST contract notes, versioning rules |
-| `shared/schemas/` | CSI frame schema, dashboard state schema, dataset metadata schema, calibration metadata schema |
-| `shared/constants/` | protocol versions, default ports, dashboard state names, WebSocket message type names |
+| Firmware | Planned only |
+| Backend | Planned only |
+| Backend simulator | README placeholder only |
+| Frontend | Planned only |
+| Shared contracts | README placeholders only |
+| Datasets | README placeholder only |
+| Logs | README placeholder only |
+| Models | Planned only |
 
-No runtime logic is required in `shared/` yet. The first implementation step should define minimal documented contracts, then each runtime module can consume them.
+## Intended System
 
-## Operating Modes
-
-EchoSense supports two modes with the same frontend contract.
+EchoSense v1 targets one ESP32 NodeMCU-32, one Wi-Fi router, one laptop running a Python backend, and a browser dashboard. The first milestone is Hardware Validation: prove CSI capture, UDP transmission, packet reception, packet-rate stability, and raw parsing.
 
 ```mermaid
 flowchart LR
-    subgraph Live["Live Mode"]
-        ESP32["ESP32 NodeMCU-32"] -->|"UDP CSI packets"| LiveBackend["Backend live source"]
-    end
-
-    subgraph Replay["Replay Mode"]
-        Dataset["Recorded dataset session"] --> ReplayBackend["Backend replay source"]
-    end
-
-    LiveBackend --> Stream["Unified backend pipeline"]
-    ReplayBackend --> Stream
-    Stream --> API["REST + /ws/live"]
-    API --> UI["Dashboard"]
+    Router["Wi-Fi router"] <--> ESP32["ESP32 NodeMCU-32"]
+    ESP32 -->|"planned UDP CSI packets"| Live["Backend live source"]
+    ReplayData["recorded dataset sessions"] --> Replay["Backend replay source"]
+    Sim["backend/simulator"] --> SimSource["Backend simulator source"]
+    Live --> Pipeline["Unified backend pipeline"]
+    Replay --> Pipeline
+    SimSource --> Pipeline
+    Pipeline --> API["REST + /ws/live"]
+    API --> UI["Browser dashboard"]
 ```
 
-From the dashboard's perspective, live and replay mode must be indistinguishable. Both publish the same `/ws/live` message envelope and the same REST state shape. Replay mode lets developers test parsing, visualization, and algorithms without hardware.
-
-## High-Level Architecture
+## Planned Backend Pipeline
 
 ```mermaid
-flowchart LR
-    Shared["shared/\nprotocol + schemas + constants"]
-    Router["Wi-Fi Router"] <--> ESP32["ESP32 NodeMCU-32\nCSI capture firmware"]
-    ESP32 -->|"UDP packets"| Source["Backend source\nlive receiver or replay reader"]
-    Simulator["backend/simulator\nsynthetic packets"] --> Source
-    Dataset["datasets/session-id\nrecorded raw data"] --> Source
-    Source --> Parser["Packet parser\nshared protocol"]
-    Parser --> Buffer["Ring buffer"]
-    Buffer --> Recorder["Session recorder"]
-    Buffer --> Features["Feature pipeline"]
+flowchart TB
+    Source["Live, replay, or simulator source"] --> Validate["Validate packet version and lengths"]
+    Validate --> Parse["Parse CSI frame"]
+    Parse --> Buffer["Ring buffer"]
+    Buffer --> Record["Optional dataset recorder"]
+    Buffer --> Features["Feature summaries"]
     Features --> State["Dashboard state machine"]
-    State --> API["Python API\nREST + /ws/live"]
-    API --> Dashboard["Dashboard\ncharts + Three.js"]
-    API --> Logs["Structured logs"]
-    Shared -.-> ESP32
-    Shared -.-> Simulator
-    Shared -.-> Parser
-    Shared -.-> API
-    Shared -.-> Dashboard
+    State --> REST["REST state endpoints"]
+    State --> WS["/ws/live messages"]
 ```
 
-## Module Responsibilities
+The existing docs specify a single Python backend process with internal modules for receive, replay, parsing, buffering, processing, state, API, recording, and logging. None of those modules exist yet.
 
-| Module | Responsibility | v1 scope |
-| --- | --- | --- |
-| `shared/` | Shared protocol definitions, schemas, constants, common types | Source of truth for packets, message envelopes, dashboard states |
-| `firmware/` | Connect to Wi-Fi, enable CSI capture, serialize frames, send UDP packets | Hardware validation first; no detection logic |
-| `backend/simulator/` | Generate synthetic CSI packets using the same protocol as firmware | Development scenarios: idle room, small motion, walking, noisy environment |
-| `backend/live_source` | Receive UDP packets from ESP32 | Validate source, track packet stats, forward bytes to parser |
-| `backend/replay_source` | Read recorded sessions and emit frames like live mode | Same interface as live source |
-| `backend/parser` | Convert packet bytes into typed CSI frames | Strict length/version validation and payload caps |
-| `backend/processing` | Produce stable feature summaries | Amplitude-first features; phase treated as experimental |
-| `backend/state` | Maintain dashboard state machine | `UNKNOWN`, `CONNECTING`, `CALIBRATING`, `EMPTY`, `PRESENT`, `MOTION`, `ERROR`, `DISCONNECTED` |
-| `backend/api` | Expose simplified v1 REST and one WebSocket endpoint | `/api/health`, `/api/state`, calibration, recording, `/ws/live` |
-| `backend/logging` | Structured backend and event logs | `logs/backend.log`, `logs/events.log` |
-| `frontend/` | Render live/replay state from API messages | One WebSocket stream and REST controls |
-| `datasets/` | Store versioned CSI sessions | session folders with metadata, raw, and processed files |
-
-## Dashboard State Machine
-
-The frontend should render from explicit states instead of scattered booleans.
+## Planned Dashboard States
 
 ```mermaid
 stateDiagram-v2
@@ -162,15 +72,40 @@ stateDiagram-v2
     DISCONNECTED --> CONNECTING
 ```
 
-## Engineering Standards
+These states are documented in the existing README and architecture docs but are not yet implemented.
 
-Every module should include:
+## Module Responsibilities
 
-- documentation,
-- type hints where applicable,
-- configuration,
-- structured logging,
-- clear interfaces,
-- minimal abstractions.
+| Module | Planned responsibility | Current status |
+| --- | --- | --- |
+| `shared/` | Source of truth for protocol, schemas, constants, common types | Placeholder READMEs |
+| `firmware/` | ESP32 Wi-Fi connection, CSI callback, packet serialization, UDP send | Empty folder |
+| `backend/simulator/` | Synthetic CSI packet generation for development | README only |
+| `backend/live_source` | Receive UDP packets from ESP32 | Not present |
+| `backend/replay_source` | Read recorded sessions and emit frames | Not present |
+| `backend/parser` | Parse and validate CSI packets | Not present |
+| `backend/processing` | Compute feature summaries | Not present |
+| `backend/state` | Maintain dashboard state machine | Not present |
+| `backend/api` | Serve REST and WebSocket endpoints | Not present |
+| `frontend/` | Render live/replay dashboard | Empty folder |
+| `datasets/` | Store versioned CSI sessions | README only |
+| `logs/` | Store structured runtime logs | README only |
+| `models/` | Store future lightweight local models | Empty folder |
 
-The backend should remain a single Python application with well-defined internal modules. Splitting into services should wait until there is a measured need.
+## Communication
+
+Planned communication paths:
+
+- ESP32 to backend: UDP packets on the local network.
+- Backend to browser: REST control/status endpoints and one WebSocket stream.
+- Replay to backend: local dataset files.
+- Simulator to backend: synthetic packets using the same shared protocol.
+
+No network services are currently implemented.
+
+## Assumptions
+
+- Backend modules will be Python because the docs repeatedly specify a Python backend.
+- Frontend will be browser-based and later include Three.js because the docs specify a dashboard and future Three.js room view.
+- Packet and schema contracts must be created before implementation because `shared/` currently contains only placeholders.
+

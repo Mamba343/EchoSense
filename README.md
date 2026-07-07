@@ -134,11 +134,26 @@ DISCONNECTED
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
+- [Agent Guide](AGENTS.md)
+- [Architecture](docs/Architecture.md)
+- [Current Status](docs/CurrentStatus.md)
+- [Roadmap](docs/Roadmap.md)
+- [Folder Structure](docs/FolderStructure.md)
+- [Design Decisions](docs/DesignDecisions.md)
+- [Setup](docs/Setup.md)
+- [Known Issues](docs/KnownIssues.md)
+- [API](docs/API.md)
+- [Database](docs/Database.md)
+- [Hardware](docs/Hardware.md)
+- [Development Guide](docs/DevelopmentGuide.md)
+
+Existing planning documents are still available where they do not overlap with the new canonical docs:
+
 - [System Design](docs/system-design.md)
 - [Data Flow](docs/data-flow.md)
-- [Roadmap](docs/roadmap.md)
 
 ## Status
 
-Architecture approved and updated. Scaffold folders and placeholder documentation exist, but firmware, backend logic, frontend code, and detection algorithms have not been implemented yet.
+Architecture approved and updated. Scaffold folders and placeholder documentation exist, but firmware, backend logic, frontend code, API handlers, datasets, models, and detection algorithms have not been implemented yet.
+
+This repository is currently in the documentation and scaffold phase. Future agents should start with [AGENTS.md](AGENTS.md) and [Current Status](docs/CurrentStatus.md) before adding code.
